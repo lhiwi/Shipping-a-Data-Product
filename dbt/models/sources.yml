@@ -1,0 +1,6 @@
+version: 2
+sources:
+  - name: raw
+    schema: {{ env_var('DBT_RAW_SCHEMA', 'raw') }}
+    tables:
+      - name: telegram_messages

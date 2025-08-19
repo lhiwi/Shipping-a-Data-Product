@@ -1,0 +1,22 @@
+fastapi
+uvicorn[standard]
+pydantic
+SQLAlchemy>=2.0
+psycopg2-binary
+python-dotenv
+pandas
+numpy
+telethon
+ultralytics
+loguru
+
+# dbt (Postgres adapter)
+dbt-postgres==1.7.13
+
+# Orchestration
+dagster
+dagster-webserver
+
+# Testing & linting
+pytest
+requests

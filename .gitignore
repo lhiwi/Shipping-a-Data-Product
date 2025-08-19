@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Data
+/data/
+*.db
+
+# Env
+.env
+.env.*
+
+# dbt
+/dbt/target/
+/dbt/logs/
+/dbt/.user.yml
+
+# VSCode / OS
+.vscode/
+.DS_Store
+Thumbs.db
