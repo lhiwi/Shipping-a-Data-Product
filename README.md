@@ -1,58 +1,136 @@
-# Shipping a Data Product (Week 7)
-End-to-end ELT product: Telegram scraping → Postgres (raw) → dbt (staging/marts) → YOLOv8 enrichment → FastAPI API → Dagster orchestration.
+#  Shipping a Data Product: From Raw Telegram Data to Analytical API
 
-## 1) Clone & Configure
-```bash
-git clone <your-repo-url>
-cd Shipping-a-Data-Product
-cp .env.example .env
-# edit .env with your credentials
+This project (10 Academy Week 7) demonstrates the full lifecycle of building and shipping a production-ready **data product** — from raw unstructured data collection to an orchestrated analytical pipeline.
+
+---
+
+##  Project Overview
+The project involves designing a data pipeline that ingests raw messages from Ethiopian medical business Telegram channels, enriches them with **YOLOv8 object detection**, structures them into a **dimensional warehouse (dbt)**, and exposes insights via an **analytical API** orchestrated with **Dagster**.
+
+The pipeline supports:
+
+* **Scraping** Telegram messages and images.
+* **Transforming** data into warehouse-ready models.
+* **Enriching** images with object detection.
+* **Serving** insights with FastAPI endpoints.
+* **Orchestrating** pipelines with Dagster schedules.
+
+---
+
+##  Repository Structure
+
+```
+Shipping-a-Data-Product/
+│
+├── notebooks/                # Jupyter notebooks for exploration & enrichment
+│   ├── 01_bootstrap_session.ipynb
+│   ├── 02_scrape_channels.ipynb
+│   ├── 03_load_to_postgres.ipynb
+│   └── 04_yolo_enrichment.ipynb
+│
+├── scripts/                  # Python scripts for ETL tasks
+│   ├── scrape.py
+│   ├── load.py
+│   ├── enrich.py
+│   └── validate_notebooks.py
+│
+├── dbt/                      # dbt project for data warehouse
+│   ├── models/
+│   │   ├── staging/
+│   │   ├── marts/
+│   │   └── ...
+│   ├── dbt_project.yml
+│   └── profiles.yml
+│
+├── api/                      # FastAPI app
+│   ├── main.py
+│   └── routers/
+│
+├── dagster_repo/             # Dagster orchestration repo
+│   ├── repository.py
+│   └── jobs.py
+│
+├── requirements.txt          # Python dependencies
+└── README.md                 # Project documentation
 ```
 
-## 2) Bring Up Services
+---
+
+## 🛠️ Setup & Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/<your-username>/Shipping-a-Data-Product.git
+   cd Shipping-a-Data-Product
+   ```
+
+2. **Create and activate virtual environment**
+
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate   # Windows
+   source .venv/bin/activate # Linux/Mac
+   ```
+
+3. **Install dependencies**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment**
+
+   * Add `.env` with your Postgres and Telegram credentials.
+
+---
+
+## Pipeline Workflow
+
+### 1 Scraping Telegram Data
+
+* Bootstrap Telegram client session.
+* Scrape messages and images from target channels.
+* Store raw data in Postgres (`raw_telegram_messages`).
+
+### 2 Data Warehouse (dbt)
+
+* Transform raw data into staging + mart models.
+* Run tests for data quality and integrity.
+
 ```bash
-docker compose up -d db
-# wait for DB healthy, then
-docker compose up api
-# (Optional) Dagster UI
-docker compose up dagster
+cd dbt
+dbt debug --profiles-dir .
+dbt run   --profiles-dir .
+dbt test  --profiles-dir .
 ```
-- FastAPI docs: http://localhost:8000/docs
-- Dagster: http://localhost:3000
 
-## 3) Initialize Database (Raw Table)
+### 3 YOLOv8 Enrichment
+
+* Run object detection on scraped images.
+* Store enriched results in `image_detections` tables.
+
+### 4 API (FastAPI)
+
+* Serve insights at `http://127.0.0.1:8000/docs`.
+* Example endpoints:
+
+  * `/messages` → Query channel messages.
+  * `/detections` → Query object detections.
+
 ```bash
-docker compose exec api python -m src.loader.load_raw_to_postgres
+uvicorn api.main:app --reload
 ```
 
-## 4) Run dbt
-```bash
-docker compose exec api bash -lc "cd dbt && dbt debug && dbt run && dbt test"
-```
+### 5️ Orchestration (Dagster)
 
-## 5) YOLO Enrichment
-```bash
-docker compose exec api python -m src.yolo.detect_and_store
-# then run dbt again if marts depend on enrichment
-```
+* Define jobs and schedules in `dagster_repo/`.
+* Start Dagster UI:
 
-## 6) API Endpoints
-- `GET /health`
-- `GET /api/reports/top-products?limit=10`
-- `GET /api/channels/{channel_name}/activity`
-- `GET /api/search/messages?query=paracetamol`
+  ```bash
+  dagit -w workspace.yaml
+  ```
+* Monitor and trigger pipelines via Dagster dashboard.
 
-## 7) Dagster Orchestration
-Graph: scrape → load → dbt → yolo. Run locally:
-```bash
-docker compose up dagster
-```
+---
 
-## 8) Tests
-```bash
-docker compose exec api pytest -q
-```
-
-## Data Layout
-- `data/raw/telegram_messages/YYYY-MM-DD/*.json`
-- `data/raw/images/*.jpg`
