@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: fct_image_detections
+    columns:
+      - name: detection_id
+        tests: [not_null, unique]
+      - name: message_id
+        tests: [not_null]
+      - name: class_name
+        tests: [not_null]
