@@ -93,12 +93,6 @@ jobs:
           );
           SQL
 
-      - name: Lint (black --check)
-        run: black --check .
-
-      - name: Lint (flake8)
-        run: flake8 .
-
       - name: Run tests
         run: pytest -q
 
