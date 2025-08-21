@@ -1,15 +1,19 @@
 from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
-class Message(BaseModel):
+class HealthOut(BaseModel):
+    status: str = "ok"
+
+class ProductCount(BaseModel):
+    term: str
+    hits: int
+
+class ChannelActivityPoint(BaseModel):
+    date: str
+    messages: int
+
+class MessageHit(BaseModel):
     message_id: int
     channel_name: str
-    message_text: Optional[str]
-    message_timestamp: datetime
-    has_image: bool
-    image_path: Optional[str]
-
-class TopProduct(BaseModel):
-    product: str
-    mentions: int
+    message_ts: str
+    message_text: Optional[str] = None
