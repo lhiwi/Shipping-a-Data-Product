@@ -1,6 +1,17 @@
 version: 2
+
 sources:
   - name: raw
-    schema: {{ env_var('DBT_RAW_SCHEMA', 'raw') }}
+    schema: raw
     tables:
       - name: telegram_messages
+        description: Raw messages scraped from Telegram
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: channel_name
+            tests: [not_null]
+          - name: message_date
+          - name: has_image
+          - name: image_path
+          - name: message_text

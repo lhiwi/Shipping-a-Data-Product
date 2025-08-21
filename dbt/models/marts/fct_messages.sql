@@ -1,14 +1,22 @@
-with m as (
+{{ config(materialized='table') }}
+
+with stg as (
   select * from {{ ref('stg_telegram_messages') }}
-), dc as (
-  select channel_name, channel_key from {{ ref('dim_channels') }}
+),
+dc as (
+  select * from {{ ref('dim_channels') }}
 )
 select
-  m.message_id,
-  dc.channel_key,
-  date_trunc('day', m.message_timestamp)::date as date_key,
-  length(m.message_text) as message_length,
-  m.has_image,
-  m.image_path
-from m
-left join dc using (channel_name)
+  s.message_id,
+  d.date_key,
+  c.channel_key,
+  s.channel_name,
+  s.message_ts,
+  s.message_text,
+  s.has_image,
+  s.image_path,
+  -- basic derived metrics
+  length(coalesce(s.message_text,'')) as message_length
+from stg s
+left join {{ ref('dim_dates') }} d on d.date_key = s.message_date
+left join dc c on c.channel_name = s.channel_name

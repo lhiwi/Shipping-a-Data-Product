@@ -1,17 +1,16 @@
-name: 'telegram_dbt'
-version: '1.0.0'
+name: telegram_analytics
+version: 1.0.0
 config-version: 2
 
-profile: 'telegram_profile'
+profile: telegram_profile
 
-model-paths: ['models']
-analysis-paths: ['analysis']
-seed-paths: ['seeds']
-macro-paths: ['macros']
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
 
 models:
-  telegram_dbt:
-    +schema: {{ env_var('DBT_SCHEMA', 'analytics') }}
+  telegram_analytics:
+    +materialized: view
     staging:
       +materialized: view
     marts:
