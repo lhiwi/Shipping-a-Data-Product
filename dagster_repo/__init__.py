@@ -1,1 +1,2 @@
-from .repository import repo
+from .repository import defs
+__all__ = ["defs"]
