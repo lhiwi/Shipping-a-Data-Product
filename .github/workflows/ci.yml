@@ -2,11 +2,13 @@ name: CI
 
 on:
   push:
+    branches: ["**"]
   pull_request:
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:15
@@ -15,36 +17,104 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
-          - 5432:5432
+          - "5432:5432"
         options: >-
-          --health-cmd "pg_isready -U postgres -d telegram_dw" 
-          --health-interval 5s 
-          --health-timeout 5s 
+          --health-cmd "pg_isready -U postgres -d telegram_dw"
+          --health-interval 10s
+          --health-timeout 5s
           --health-retries 10
 
     env:
+      # app/db env used by tests and dbt
       POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
+      POSTGRES_PORT: "5432"
       POSTGRES_DB: telegram_dw
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      DBT_SCHEMA: analytics
-      DBT_RAW_SCHEMA: raw
-      DBT_TARGET: dev
+
+      # make dbt use the repo dbt/ directory
+      DBT_PROFILES_DIR: dbt
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Install deps
+      - name: Install system deps (psql client)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pytest black flake8
 
-      - name: Run env and DB smoke tests
+      - name: Wait for Postgres
         run: |
-          pytest -q tests/test_environment.py
+          until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER"; do
+            echo "Waiting for Postgres..."; sleep 2;
+          done
+
+      # Ensure dbt's source tables exist so models don't fail in a fresh CI DB
+      - name: Bootstrap source tables for dbt
+        run: |
+          export PGPASSWORD="$POSTGRES_PASSWORD"
+          psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 <<'SQL'
+          create schema if not exists raw;
+          create schema if not exists analytics;
+
+          create table if not exists raw.telegram_messages (
+            id bigint primary key,
+            channel_name text,
+            message_ts timestamp,
+            message_text text,
+            has_image boolean default false
+          );
+
+          create table if not exists raw.image_detections (
+            detection_id bigserial primary key,
+            message_id bigint,
+            class_name text,
+            confidence double precision
+          );
+          SQL
+
+      - name: Run tests
+        run: pytest -q
+
+      # ---- dbt smoke (project lives in ./dbt) ----
+      - name: dbt deps
+        working-directory: dbt
+        run: dbt deps --profiles-dir .
+
+      - name: dbt debug
+        working-directory: dbt
+        run: dbt debug --profiles-dir .
+
+      - name: dbt run
+        working-directory: dbt
+        run: dbt run --profiles-dir .
+
+      - name: dbt test
+        working-directory: dbt
+        run: dbt test --profiles-dir .
+
+      # Optional: validate notebooks if the script exists
+      - name: Validate notebooks (optional)
+        if: hashFiles('scripts/validate_notebooks.py') != ''
+        run: |
+          python scripts/validate_notebooks.py || true
