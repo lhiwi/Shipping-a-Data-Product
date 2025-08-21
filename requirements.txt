@@ -10,6 +10,8 @@ telethon
 ultralytics
 loguru
 
+# notebooks
+jupyter
 # dbt (Postgres adapter)
 dbt-postgres==1.7.13
 
