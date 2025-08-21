@@ -22,3 +22,5 @@ dagster-webserver
 # Testing & linting
 pytest
 requests
+# deployment
+streamlit>=1.36

@@ -48,3 +48,10 @@ jobs:
       - name: Run env and DB smoke tests
         run: |
           pytest -q tests/test_environment.py
+            - name: DBT smoke
+        run: |
+          cd dbt
+          dbt deps --profiles-dir .
+          dbt debug --profiles-dir .
+          dbt run   --profiles-dir .
+          dbt test  --profiles-dir .
